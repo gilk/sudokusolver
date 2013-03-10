@@ -366,6 +366,14 @@ public:
 	}
 
 	
+	//check is board is broken
+	bool boardBroken(){
+		for(int i(0);i<81;i++){
+			if(board[i]==0&&boolboard[i]==511) return true;
+		}
+		return false;
+	}
+	
 	void solve(){
 		int startfill(filled),k(0);
 		scanSolver();
@@ -386,6 +394,7 @@ public:
 			}
 			if(filled==startfill){
 				std::cout << "The sudoku cannot be solved completely with this method after " << k << " passes\nEither this method is incomplete or the sudoku is invalid or solving it may require guess work" << std::endl;
+				if(boardBroken()) std::cout << "THIS SUDOKU IS MOTHERFUCKING BULLSHIT" << std::endl;
 				break;
 			}
 			startfill=filled;
