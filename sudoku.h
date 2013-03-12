@@ -8,16 +8,14 @@ private:
 public:
 	void fill();
 	//default constructor for and empty board
-	sudoku()
-	{
+	sudoku(){
 		for(int i(0);i<81;i++){
 			board[i]=boolboard[i]=0;
 		}
 		filled=0;
 	}
 	//read a sudoku in from file
-	sudoku(std::ifstream& fin)
-	{
+	sudoku(std::ifstream& fin){
 		filled=0;
 		int entry;
 		for(int i(0);i<81;i++){
@@ -136,7 +134,7 @@ public:
         return count;
     }
 	void scanSolver(){
-		bool changed(true);
+//		bool changed(true);
 			for(int i(0);i<81;i++){
 				//std::cout << bitcount(boolboard[i]) << std::endl;
 				if(bitcount(boolboard[i])==8){
@@ -156,7 +154,7 @@ public:
 			binval = 1<<val-1;
 			for(int group(0);group<9;group++){
 				rowcount=0,colcount=0,boxcount = 0;
-				int coladd = group, rowadd=row(group), boxadd = box(group);
+				int rowadd=row(group), boxadd = box(group);
 				for(int place(0);place<9;place++){
 					if((boolboard[row(rowadd,place)]&binval) == 0) rowcount++;
 					if((boolboard[col(group,place)]&binval) == 0) colcount++;
@@ -313,6 +311,7 @@ public:
 				if(boolcount==9-bitcount(testbool)){
 					for(int i(0);i<9;i++){
 						if(testbool!=boolboard[box(boxn(group),i)]&&(testbool&boolboard[box(boxn(group),i)])!=0){
+							if((boolboard[box(boxn(group),i)]|((~testbool)&511))==boolboard[box(boxn(group),i)]) break;
 							(boolboard[box(boxn(group),i)]|=~testbool)&=511;
 							res = true;
 						}
@@ -365,7 +364,106 @@ public:
 		return res;
 	}
 
-	
+	//find and expose hidden groups
+	bool revealhiddengroupsbox(){
+		bool res(false);
+		for(int group(0);group<9;group++){
+			int valmap[9] = {0,0,0,0,0,0,0,0,0};
+			for(int val(1);val<10;val++){
+				for(int place(0);place<9;place++){
+					if(isPossible(box(box(group),place),val)) valmap[val-1]|=1<<place;
+				}
+			}
+			for(int i(0);i<8;i++){
+				int count(0);
+				for(int j(0);j<9;j++){
+					if(valmap[i]==valmap[j]) count++;
+				}
+				if(bitcount(valmap[i])==count){
+					int mask(0);
+					for(int j(0);j<9;j++){
+						if(valmap[i]==valmap[j]){
+							mask|=1<<j;
+						}
+					}
+					mask=(~mask)&511;
+					for(int place(0);place<9;place++){
+						if((valmap[i]&1<<place)!=0&&boolboard[box(box(group),place)]!=mask){
+							boolboard[box(box(group),place)]=mask;
+							res=true;
+						}
+					}
+				}
+			}
+		}
+		return res;
+	}
+	bool revealhiddengroupscol(){
+		bool res(false);
+		for(int group(0);group<9;group++){
+			int valmap[9] = {0,0,0,0,0,0,0,0,0};
+			for(int val(1);val<10;val++){
+				for(int place(0);place<9;place++){
+					if(isPossible(col(group,place),val)) valmap[val-1]|=1<<place;
+				}
+			}
+			for(int i(0);i<8;i++){
+				int count(0);
+				for(int j(0);j<9;j++){
+					if(valmap[i]==valmap[j]) count++;
+				}
+				if(bitcount(valmap[i])==count){
+					int mask(0);
+					for(int j(0);j<9;j++){
+						if(valmap[i]==valmap[j]){
+							mask|=1<<j;
+						}
+					}
+					mask=(~mask)&511;
+					for(int place(0);place<9;place++){
+						if((valmap[i]&1<<place)!=0&&boolboard[col(group,place)]!=mask){
+							boolboard[col(group,place)]=mask;
+							res=true;
+						}
+					}
+				}
+			}
+		}
+		return res;
+	}	
+	bool revealhiddengroupsrow(){
+		bool res(false);
+		for(int group(0);group<9;group++){
+			int valmap[9] = {0,0,0,0,0,0,0,0,0};
+			for(int val(1);val<10;val++){
+				for(int place(0);place<9;place++){
+					if(isPossible(row(row(group),place),val)) valmap[val-1]|=1<<place;
+				}
+			}
+			for(int i(0);i<8;i++){
+				int count(0);
+				for(int j(0);j<9;j++){
+					if(valmap[i]==valmap[j]) count++;
+				}
+				if(bitcount(valmap[i])==count){
+					int mask(0);
+					for(int j(0);j<9;j++){
+						if(valmap[i]==valmap[j]){
+							mask|=1<<j;
+						}
+					}
+					mask=(~mask)&511;
+					for(int place(0);place<9;place++){
+						if((valmap[i]&1<<place)!=0&&boolboard[row(row(group),place)]!=mask){
+							boolboard[row(row(group),place)]=mask;
+							res=true;
+						}
+					}
+				}
+			}
+		}
+		return res;
+	}
 	//check is board is broken
 	bool boardBroken(){
 		for(int i(0);i<81;i++){
@@ -374,7 +472,38 @@ public:
 		return false;
 	}
 	
-	void solve(){
+	bool nishio(){
+		bool res=false;
+		int savedBoard[81],savedBoolboard[81], savedFilled;
+		for(int i(0);i<81;i++){
+			if(bitcount(boolboard[i])==7){
+				savedFilled=filled;
+				for(int j(0);j<81;j++){
+					savedBoard[j]=board[j];
+					savedBoolboard[j]=boolboard[j];
+				}
+				for(int val(1);val<10;val++){
+					if(isPossible(i,val)){
+						removePos(i,val);
+						solve(false);
+						if(boardBroken()){
+							filled=savedFilled;
+							for(int k(0);k<81;k++){
+								board[k]=savedBoard[k];
+								boolboard[k]=savedBoolboard[k];
+							}
+							fill(i,val);
+							res = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		return res;
+	}
+	
+	void solve(bool nish=true){
 		int startfill(filled),k(0);
 		scanSolver();
 		scanGroup();
@@ -384,20 +513,29 @@ public:
 			if(removelikegroupsbox()) startfill--;
 			if(removelikegroupsrow()) startfill--;
 			if(removelikegroupscol()) startfill--;
+			if(revealhiddengroupsbox()) startfill--;
+			if(revealhiddengroupsrow()) startfill--;
+			if(revealhiddengroupscol()) startfill--;
+			if(nish&&startfill==filled){
+				if(nishio()) startfill--;
+			}
 			scanSolver();
 			scanGroup();
 			k++;
-//			std::cout << filled << std::endl;
-			if(filled == 81){
-				std::cout << "The sudoku is complete and was solved in " << k << " passes" << std::endl;
-				break;
-			}
-			if(filled==startfill){
-				std::cout << "The sudoku cannot be solved completely with this method after " << k << " passes\nEither this method is incomplete or the sudoku is invalid or solving it may require guess work" << std::endl;
-				if(boardBroken()) std::cout << "THIS SUDOKU IS MOTHERFUCKING BULLSHIT" << std::endl;
-				break;
-			}
+			if(startfill==filled||filled==81) break;
 			startfill=filled;
+		}
+		if(filled==81&&nish){
+			std::cout << "The sudoku was solved after " << k << " passes\n";
+		}
+		if(filled<81&&nish){
+			std::cout<< "The sudoku was not solved\n";
+			if(boardBroken()){
+				std::cout << "The initial board was invalid and cannot be solved\n";
+			}
+			else{
+				std::cout << "The may be another logical method to solve this sudoku that has not been programmed yet or the initial board may have been unsolvable.";
+			}
 		}
 	}
 	
