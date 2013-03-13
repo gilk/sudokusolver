@@ -484,6 +484,11 @@ public:
 				}
 				for(int val(1);val<10;val++){
 					if(isPossible(i,val)){
+						filled=savedFilled;
+						for(int k(0);k<81;k++){
+							board[k]=savedBoard[k];
+							boolboard[k]=savedBoolboard[k];
+						}
 						removePos(i,val);
 						solve(false);
 						if(boardBroken()){
@@ -491,7 +496,7 @@ public:
 							for(int k(0);k<81;k++){
 								board[k]=savedBoard[k];
 								boolboard[k]=savedBoolboard[k];
-							}
+							}	
 							fill(i,val);
 							res = true;
 							break;
